@@ -625,8 +625,56 @@ function setCubeZoom(ratio){
   updateCamera();
 }
 
+// Fanfare sound using Web Audio API
+function playFanfare(){
+  try{
+    const ac=new (window.AudioContext||window.webkitAudioContext)();
+    // Bright trumpet-like fanfare: C5 E5 G5 C6
+    const notes=[
+      {freq:523.25,start:0,dur:0.15},
+      {freq:659.25,start:0.15,dur:0.15},
+      {freq:783.99,start:0.3,dur:0.15},
+      {freq:1046.5,start:0.45,dur:0.45},
+      // Harmony layer
+      {freq:392.0,start:0,dur:0.15,gain:0.3},
+      {freq:523.25,start:0.15,dur:0.15,gain:0.3},
+      {freq:659.25,start:0.3,dur:0.15,gain:0.3},
+      {freq:783.99,start:0.45,dur:0.45,gain:0.3},
+    ];
+    const now=ac.currentTime;
+    notes.forEach(n=>{
+      const osc=ac.createOscillator();
+      const gain=ac.createGain();
+      const g=n.gain||0.5;
+      osc.type='square';
+      osc.frequency.value=n.freq;
+      gain.gain.setValueAtTime(0,now+n.start);
+      gain.gain.linearRampToValueAtTime(g,now+n.start+0.02);
+      gain.gain.setValueAtTime(g,now+n.start+n.dur*0.7);
+      gain.gain.linearRampToValueAtTime(0,now+n.start+n.dur);
+      osc.connect(gain);gain.connect(ac.destination);
+      osc.start(now+n.start);osc.stop(now+n.start+n.dur+0.05);
+    });
+    // Sparkle shimmer
+    for(let i=0;i<5;i++){
+      const osc=ac.createOscillator();
+      const gain=ac.createGain();
+      osc.type='sine';
+      osc.frequency.value=2000+Math.random()*2000;
+      const t=0.5+i*0.08;
+      gain.gain.setValueAtTime(0,now+t);
+      gain.gain.linearRampToValueAtTime(0.08,now+t+0.02);
+      gain.gain.linearRampToValueAtTime(0,now+t+0.15);
+      osc.connect(gain);gain.connect(ac.destination);
+      osc.start(now+t);osc.stop(now+t+0.2);
+    }
+    setTimeout(()=>ac.close(),2000);
+  }catch(e){}
+}
+
 // Confetti celebration
 function launchConfetti(){
+  playFanfare();
   const canvas2=document.createElement('canvas');
   canvas2.className='confetti-overlay';
   canvas2.width=window.innerWidth;canvas2.height=window.innerHeight;
