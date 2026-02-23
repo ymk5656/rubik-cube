@@ -272,7 +272,7 @@ const renderer = new THREE.WebGLRenderer({canvas, antialias:true, alpha:true});
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 renderer.setClearColor(0x000000, 0);
 const scene = new THREE.Scene();
-const camera = new THREE.PerspectiveCamera(40, 1, 0.1, 100);
+const camera = new THREE.PerspectiveCamera(50, 1, 0.1, 100);
 camera.position.set(5, 4, 6); camera.lookAt(0,0,0);
 scene.add(new THREE.AmbientLight(0xffffff, 0.65));
 const dirLight = new THREE.DirectionalLight(0xffffff, 0.5);
@@ -308,6 +308,30 @@ let isAnimating=false;
 const rotationGroup=new THREE.Group();
 scene.add(rotationGroup);
 
+// Pre-compute the 24 valid cube orientations (chiral octahedral group)
+const VALID_QUATS=(function(){
+  const qs=[];const r=Math.PI/2;
+  for(let ax=0;ax<4;ax++) for(let ay=0;ay<4;ay++) for(let az=0;az<4;az++){
+    const q=new THREE.Quaternion().setFromEuler(new THREE.Euler(ax*r,ay*r,az*r));
+    // De-duplicate (quaternion q and -q represent same rotation)
+    let dup=false;
+    for(const existing of qs){
+      if(Math.abs(q.dot(existing))>0.999){dup=true;break;}
+    }
+    if(!dup) qs.push(q);
+  }
+  return qs;
+})();
+
+function snapQuaternion(q){
+  let best=VALID_QUATS[0],bestDot=Math.abs(q.dot(VALID_QUATS[0]));
+  for(let i=1;i<VALID_QUATS.length;i++){
+    const d=Math.abs(q.dot(VALID_QUATS[i]));
+    if(d>bestDot){bestDot=d;best=VALID_QUATS[i];}
+  }
+  q.copy(best);
+}
+
 function getLayerCubies(axis,layer){
   return cubies.filter(c=>axis==='x'?c.ix===layer:axis==='y'?c.iy===layer:c.iz===layer);
 }
@@ -316,27 +340,61 @@ function animateLayerRotation(axis,layer,angleDeg,duration){
     if(isAnimating){resolve();return;}
     isAnimating=true;
     const affected=getLayerCubies(axis,layer);
-    rotationGroup.rotation.set(0,0,0); rotationGroup.position.set(0,0,0);
-    affected.forEach(c=>{cubieMeshes.remove(c.mesh);rotationGroup.add(c.mesh)});
+
+    // Save each cubie's original local position & quaternion before reparenting
+    const savedState=affected.map(c=>({
+      cubie:c,
+      pos:c.mesh.position.clone(),
+      quat:c.mesh.quaternion.clone()
+    }));
+
+    rotationGroup.rotation.set(0,0,0);rotationGroup.position.set(0,0,0);
+    rotationGroup.scale.set(1,1,1);
+    rotationGroup.updateMatrixWorld(true);
+
+    // Reparent: keep same world position by explicitly setting position
+    affected.forEach(c=>{
+      cubieMeshes.remove(c.mesh);
+      rotationGroup.add(c.mesh);
+      // position is already in world space since cubieMeshes has identity transform
+    });
+
     const angleRad=THREE.MathUtils.degToRad(angleDeg);
     const axisVec=axis==='x'?new THREE.Vector3(1,0,0):axis==='y'?new THREE.Vector3(0,1,0):new THREE.Vector3(0,0,1);
     const startTime=performance.now();
+
+    // Pre-compute the exact final rotation quaternion (clean 90° multiple)
+    const finalRotQ=new THREE.Quaternion().setFromAxisAngle(axisVec,angleRad);
+
     function tick(){
       const t=Math.min((performance.now()-startTime)/duration,1);
       const ease=1-Math.pow(1-t,3);
-      rotationGroup.rotation.set(0,0,0);
-      rotationGroup.rotateOnAxis(axisVec,angleRad*ease);
+      rotationGroup.quaternion.identity();
+      rotationGroup.quaternion.multiply(new THREE.Quaternion().setFromAxisAngle(axisVec,angleRad*ease));
       if(t<1){requestAnimationFrame(tick);return;}
-      rotationGroup.rotation.set(0,0,0);
-      rotationGroup.rotateOnAxis(axisVec,angleRad);
-      rotationGroup.updateMatrixWorld(true);
-      affected.forEach(c=>{
-        const wp=new THREE.Vector3();c.mesh.getWorldPosition(wp);
-        const wq=new THREE.Quaternion();c.mesh.getWorldQuaternion(wq);
-        rotationGroup.remove(c.mesh);cubieMeshes.add(c.mesh);
-        c.mesh.position.copy(wp);c.mesh.quaternion.copy(wq);
-        c.ix=Math.round(wp.x/SPACING);c.iy=Math.round(wp.y/SPACING);c.iz=Math.round(wp.z/SPACING);
+
+      // Animation done — compute final positions & quaternions mathematically
+      affected.forEach((c,i)=>{
+        const s=savedState[i];
+        // Apply exact rotation to position
+        const newPos=s.pos.clone().applyQuaternion(finalRotQ);
+        // Apply exact rotation to orientation
+        const newQuat=finalRotQ.clone().multiply(s.quat);
+
+        rotationGroup.remove(c.mesh);
+        cubieMeshes.add(c.mesh);
+
+        // Snap position to grid
+        c.ix=Math.round(newPos.x/SPACING);
+        c.iy=Math.round(newPos.y/SPACING);
+        c.iz=Math.round(newPos.z/SPACING);
+        c.mesh.position.set(c.ix*SPACING,c.iy*SPACING,c.iz*SPACING);
+
+        // Snap quaternion
+        c.mesh.quaternion.copy(newQuat);
+        snapQuaternion(c.mesh.quaternion);
       });
+
       rotationGroup.rotation.set(0,0,0);
       isAnimating=false;resolve();
     }
@@ -360,11 +418,10 @@ async function executeMove(notation,duration){
 // Camera orbit
 let orbiting=false,orbX,orbY;
 let cameraTheta=Math.PI/4,cameraPhi=Math.PI/6;
-const cameraRadius=8.5;
 function updateCamera(){
-  camera.position.x=cameraRadius*Math.cos(cameraPhi)*Math.sin(cameraTheta);
-  camera.position.y=cameraRadius*Math.sin(cameraPhi);
-  camera.position.z=cameraRadius*Math.cos(cameraPhi)*Math.cos(cameraTheta);
+  camera.position.x=currentCameraRadius*Math.cos(cameraPhi)*Math.sin(cameraTheta);
+  camera.position.y=currentCameraRadius*Math.sin(cameraPhi);
+  camera.position.z=currentCameraRadius*Math.cos(cameraPhi)*Math.cos(cameraTheta);
   camera.lookAt(0,0,0);
 }
 canvas.addEventListener('mousedown',e=>{orbiting=true;orbX=e.clientX;orbY=e.clientY});
@@ -582,12 +639,13 @@ document.querySelectorAll('.face-btn').forEach(btn=>{
   });
 });
 
-// Cube scale for manual mode
-function setCubeScale(s){
-  cubieMeshes.scale.set(s,s,s);
-  rotationGroup.scale.set(s,s,s);
-  camera.fov = s < 1 ? 55 : 40;
-  camera.updateProjectionMatrix();
+// Cube zoom for manual mode (camera distance, no scale — avoids coordinate bugs)
+const BASE_CAMERA_RADIUS = 7.5;
+let currentCameraRadius = BASE_CAMERA_RADIUS;
+function setCubeZoom(ratio){
+  // ratio=1.0 → auto(기본), ratio>1 → 줌아웃(작게 보임)
+  currentCameraRadius = BASE_CAMERA_RADIUS * ratio;
+  updateCamera();
 }
 
 // Confetti celebration
@@ -657,7 +715,7 @@ modeAutoBtn.addEventListener('click',()=>{
   document.body.classList.remove('manual-mode');
   modeAutoBtn.classList.add('active');
   modeManualBtn.classList.remove('active');
-  setCubeScale(1.0);
+  setCubeZoom(1.0);
   requestAnimationFrame(resize);
 });
 modeManualBtn.addEventListener('click',()=>{
@@ -665,7 +723,8 @@ modeManualBtn.addEventListener('click',()=>{
   document.body.classList.add('manual-mode');
   modeManualBtn.classList.add('active');
   modeAutoBtn.classList.remove('active');
-  setCubeScale(0.58);
+  setCubeZoom(1.18);
+  setFaceBtnsEnabled(true);
   requestAnimationFrame(resize);
 });
 
