@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>루빅스 큐브 솔버</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Sora:wght@300;400;600;800&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -22,124 +22,154 @@ body{
   background:var(--bg);
   color:var(--text);
   font-family:'Sora',sans-serif;
-  min-height:100vh;
-  overflow-x:hidden;
+  height:100vh;height:100dvh;
+  overflow:hidden;
   user-select:none;
+  -webkit-user-select:none;
 }
 body::before{
   content:'';position:fixed;inset:0;
   background-image:url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23000' fill-opacity='0.02'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
   pointer-events:none;z-index:0;
 }
+
+/* Full-height flex layout */
 .layout{
   display:flex;flex-direction:column;
-  min-height:100vh;position:relative;z-index:1;
+  height:100vh;height:100dvh;
+  position:relative;z-index:1;
+  overflow:hidden;
 }
-.header{padding:1.5rem 2rem 0.5rem;text-align:center}
+
+.header{padding:0.8rem 1rem 0.3rem;text-align:center;flex-shrink:0}
 .header h1{
   font-family:'DM Mono',monospace;
-  font-size:clamp(1.4rem,3.5vw,2.2rem);
+  font-size:clamp(1.1rem,3vw,1.8rem);
   font-weight:500;letter-spacing:-0.03em;
 }
 .header h1 span{color:var(--accent)}
 .header .sub{
-  font-size:0.72rem;color:var(--text-dim);
-  letter-spacing:0.25em;text-transform:uppercase;margin-top:0.2rem;
+  font-size:0.62rem;color:var(--text-dim);
+  letter-spacing:0.2em;text-transform:uppercase;margin-top:0.1rem;
 }
-.stats{
-  display:flex;justify-content:center;gap:1.5rem;padding:0.4rem 1rem;
+
+/* Info bar: stats + arrow inline */
+.info-bar{
+  display:flex;align-items:center;justify-content:center;
+  gap:1rem;padding:0.3rem 0.5rem;flex-shrink:0;
+  flex-wrap:wrap;
 }
-.stat{font-family:'DM Mono',monospace;font-size:0.68rem;color:var(--text-dim)}
+.stat{font-family:'DM Mono',monospace;font-size:0.65rem;color:var(--text-dim)}
 .stat span{color:var(--accent);font-weight:500}
+.arrow-inline{
+  display:flex;align-items:center;gap:0.3rem;
+}
+.arrow-inline .arrow-svg{width:32px;height:32px}
+.arrow-inline .arrow-label{
+  font-family:'DM Mono',monospace;font-size:0.8rem;font-weight:600;color:var(--accent);
+}
+.arrow-inline .arrow-desc{
+  font-family:'Sora',sans-serif;font-size:0.6rem;color:var(--text-dim);
+}
 
 /* Move display */
 .move-display{
-  font-family:'DM Mono',monospace;font-size:0.8rem;
+  font-family:'DM Mono',monospace;font-size:0.7rem;
   color:var(--text-dim);text-align:center;
-  min-height:2.5em;padding:0.3rem 1rem;
-  display:flex;align-items:center;justify-content:center;gap:0.3rem;
-  flex-wrap:wrap;
+  padding:0.15rem 0.5rem;flex-shrink:0;
+  display:flex;align-items:center;justify-content:center;gap:0.2rem;
+  flex-wrap:wrap;min-height:1.6em;
 }
 .mv{
   display:inline-flex;align-items:center;justify-content:center;
-  padding:0.2rem 0.45rem;border-radius:4px;
-  font-size:0.7rem;transition:all 0.2s;
+  padding:0.15rem 0.35rem;border-radius:3px;
+  font-size:0.62rem;transition:all 0.2s;
 }
 .mv.done{background:#e8e6e0;color:var(--text-dim);opacity:0.5}
 .mv.current{
   background:var(--accent);color:#fff;
-  font-weight:600;font-size:0.85rem;
-  box-shadow:0 2px 8px rgba(196,62,28,0.3);
-  transform:scale(1.15);
+  font-weight:600;font-size:0.72rem;
+  box-shadow:0 1px 6px rgba(196,62,28,0.3);
+  transform:scale(1.1);
 }
 .mv.future{background:#eae7e0;color:var(--text-dim)}
 
-/* Arrow indicator */
-.arrow-box{
-  text-align:center;min-height:3rem;
-  display:flex;flex-direction:column;align-items:center;justify-content:center;
-  gap:0.2rem;padding:0.2rem;
-}
-.arrow-box .arrow-label{
-  font-family:'DM Mono',monospace;font-size:0.9rem;font-weight:600;
-  color:var(--accent);
-}
-.arrow-box .arrow-desc{
-  font-family:'Sora',sans-serif;font-size:0.7rem;color:var(--text-dim);
-}
-.arrow-box .arrow-reason{
-  font-family:'Sora',sans-serif;font-size:0.68rem;color:var(--accent2);
-  background:rgba(26,107,74,0.08);border-radius:4px;
-  padding:0.2rem 0.6rem;margin-top:0.15rem;
-  max-width:320px;line-height:1.4;
-}
-.arrow-svg{width:60px;height:60px}
-
-/* Canvas */
+/* Canvas - fills remaining space */
 #cubeCanvas{
-  display:block;margin:0 auto;cursor:grab;
-  flex:1;min-height:300px;max-height:500px;
+  display:block;cursor:grab;
+  flex:1;min-height:0;
+  width:100%;
 }
 #cubeCanvas:active{cursor:grabbing}
 
+/* Controls */
 .controls{
   display:flex;flex-wrap:wrap;justify-content:center;
-  align-items:center;gap:0.8rem;padding:0.8rem 1rem 1.5rem;
+  align-items:center;gap:0.5rem;
+  padding:0.5rem 0.5rem;flex-shrink:0;
+  padding-bottom:max(0.5rem, env(safe-area-inset-bottom));
 }
-.ctrl-group{display:flex;flex-direction:column;align-items:center;gap:0.35rem}
+.ctrl-group{display:flex;flex-direction:column;align-items:center;gap:0.2rem}
 .ctrl-group label{
-  font-family:'DM Mono',monospace;font-size:0.6rem;
-  color:var(--text-dim);text-transform:uppercase;letter-spacing:0.2em;
+  font-family:'DM Mono',monospace;font-size:0.55rem;
+  color:var(--text-dim);text-transform:uppercase;letter-spacing:0.15em;
 }
 .btn{
-  font-family:'DM Mono',monospace;font-size:0.72rem;letter-spacing:0.05em;
-  padding:0.55rem 1.2rem;border:1.5px solid var(--border);
+  font-family:'DM Mono',monospace;font-size:0.68rem;letter-spacing:0.03em;
+  padding:0.5rem 0.8rem;border:1.5px solid var(--border);
   background:var(--surface);color:var(--text);border-radius:6px;
   cursor:pointer;transition:all 0.2s;
+  -webkit-tap-highlight-color:transparent;
+  touch-action:manipulation;
 }
 .btn:hover{border-color:var(--accent);color:var(--accent)}
-.btn:disabled{opacity:0.3;cursor:not-allowed}
+.btn:active{transform:scale(0.96)}
+.btn:disabled{opacity:0.3;cursor:not-allowed;transform:none}
 .btn--accent{background:var(--accent);color:#fff;border-color:var(--accent)}
 .btn--accent:hover{background:#a83518;border-color:#a83518;color:#fff}
 .btn--green{background:var(--accent2);color:#fff;border-color:var(--accent2)}
 .btn--green:hover{background:#145a3e;border-color:#145a3e;color:#fff}
-.slider-wrap{display:flex;align-items:center;gap:0.5rem}
+.slider-wrap{display:flex;align-items:center;gap:0.4rem}
 .speed-slider{
   -webkit-appearance:none;appearance:none;
-  width:130px;height:3px;background:var(--border);border-radius:2px;outline:none;
+  width:100px;height:3px;background:var(--border);border-radius:2px;outline:none;
 }
 .speed-slider::-webkit-slider-thumb{
-  -webkit-appearance:none;width:16px;height:16px;border-radius:50%;
+  -webkit-appearance:none;width:20px;height:20px;border-radius:50%;
   background:var(--accent);cursor:pointer;
   box-shadow:0 1px 4px rgba(196,62,28,0.3);
 }
 .speed-val{
-  font-family:'DM Mono',monospace;font-size:0.7rem;color:var(--accent);
-  min-width:5ch;text-align:center;
+  font-family:'DM Mono',monospace;font-size:0.65rem;color:var(--accent);
+  min-width:4ch;text-align:center;
 }
-.hint-text{
-  font-size:0.65rem;color:var(--text-dim);text-align:center;
-  padding:0.2rem;letter-spacing:0.1em;opacity:0.6;
+
+/* Step buttons row */
+.step-row{
+  display:flex;gap:0.4rem;
+}
+
+/* Mobile: tighter spacing */
+@media(max-width:480px){
+  .header{padding:0.5rem 0.5rem 0.2rem}
+  .header .sub{display:none}
+  .controls{gap:0.35rem;padding:0.4rem 0.3rem}
+  .btn{padding:0.45rem 0.6rem;font-size:0.62rem}
+  .speed-slider{width:80px}
+  .move-display{font-size:0.6rem;padding:0.1rem 0.3rem}
+  .mv{padding:0.1rem 0.25rem;font-size:0.55rem}
+  .mv.current{font-size:0.65rem}
+  .info-bar{gap:0.5rem;padding:0.2rem}
+}
+
+/* Landscape mobile */
+@media(max-height:500px){
+  .header h1{font-size:1rem}
+  .header{padding:0.3rem 0.5rem 0.1rem}
+  .header .sub{display:none}
+  .info-bar{padding:0.15rem}
+  .move-display{min-height:1.2em;padding:0.05rem}
+  .controls{padding:0.3rem}
 }
 </style>
 </head>
@@ -150,18 +180,15 @@ body::before{
     <div class="sub">3×3 Solver &amp; Visualizer</div>
   </div>
 
-  <div class="stats">
+  <div class="info-bar">
     <div class="stat">상태: <span id="statusText">준비</span></div>
-    <div class="stat">이동: <span id="moveIdx">0</span> / <span id="moveTotal">0</span></div>
+    <div class="stat">이동: <span id="moveIdx">0</span>/<span id="moveTotal">0</span></div>
+    <div class="arrow-inline" id="arrowBox"></div>
   </div>
 
   <div class="move-display" id="moveDisplay"></div>
 
-  <div class="arrow-box" id="arrowBox"></div>
-
   <canvas id="cubeCanvas"></canvas>
-
-  <div class="hint-text">드래그하여 큐브 회전</div>
 
   <div class="controls">
     <div class="ctrl-group">
@@ -173,31 +200,23 @@ body::before{
     </div>
     <button class="btn" id="scrambleBtn">섞기</button>
     <button class="btn btn--accent" id="solveBtn" disabled>풀기</button>
-    <button class="btn" id="stepBackBtn" disabled>◀ 뒤로</button>
-    <button class="btn" id="stepBtn" disabled>앞으로 ▶</button>
+    <div class="step-row">
+      <button class="btn" id="stepBackBtn" disabled>◀</button>
+      <button class="btn" id="stepBtn" disabled>▶</button>
+    </div>
     <button class="btn btn--green" id="resetBtn">초기화</button>
   </div>
 </div>
 
 <script>
-// =====================================================
-// THREE.JS 3x3 RUBIK'S CUBE WITH LAYER ROTATION ANIM
-// =====================================================
-
 const COLORS = {
-  W: 0xffffff, // Up - white
-  Y: 0xffd426, // Down - yellow
-  R: 0xc41e3a, // Front - red
-  O: 0xff5800, // Back - orange
-  B: 0x0051ba, // Left - blue
-  G: 0x009e60, // Right - green
-  X: 0x1a1714  // internal - dark
+  W: 0xffffff, Y: 0xffd426, R: 0xc41e3a,
+  O: 0xff5800, B: 0x0051ba, G: 0x009e60, X: 0x1a1714
 };
 
-// ---- Scene setup ----
 const canvas = document.getElementById('cubeCanvas');
 const renderer = new THREE.WebGLRenderer({canvas, antialias:true, alpha:true});
-renderer.setPixelRatio(window.devicePixelRatio);
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 renderer.setClearColor(0x000000, 0);
 
 const scene = new THREE.Scene();
@@ -205,60 +224,42 @@ const camera = new THREE.PerspectiveCamera(40, 1, 0.1, 100);
 camera.position.set(5, 4, 6);
 camera.lookAt(0,0,0);
 
-// Lighting
 scene.add(new THREE.AmbientLight(0xffffff, 0.65));
 const dirLight = new THREE.DirectionalLight(0xffffff, 0.5);
 dirLight.position.set(5,8,6);
 scene.add(dirLight);
 
-// ---- Build 27 cubies ----
 const GAP = 0.06;
 const CUBIE_SIZE = 0.92;
-const cubies = []; // each: {mesh, ix, iy, iz}  (logical position)
+const cubies = [];
 const cubieMeshes = new THREE.Group();
 scene.add(cubieMeshes);
 
 function makeCubieMaterials(ix, iy, iz){
-  // order: +x, -x, +y, -y, +z, -z
-  const mats = [];
-  const s = CUBIE_SIZE;
-  // Right face (+x): ix==1 -> Green
-  mats.push(new THREE.MeshStandardMaterial({color: ix===1 ? COLORS.G : COLORS.X}));
-  // Left face (-x): ix==-1 -> Blue
-  mats.push(new THREE.MeshStandardMaterial({color: ix===-1 ? COLORS.B : COLORS.X}));
-  // Up face (+y): iy==1 -> White
-  mats.push(new THREE.MeshStandardMaterial({color: iy===1 ? COLORS.W : COLORS.X}));
-  // Down face (-y): iy==-1 -> Yellow
-  mats.push(new THREE.MeshStandardMaterial({color: iy===-1 ? COLORS.Y : COLORS.X}));
-  // Front face (+z): iz==1 -> Red
-  mats.push(new THREE.MeshStandardMaterial({color: iz===1 ? COLORS.R : COLORS.X}));
-  // Back face (-z): iz==-1 -> Orange
-  mats.push(new THREE.MeshStandardMaterial({color: iz===-1 ? COLORS.O : COLORS.X}));
-  return mats;
+  return [
+    new THREE.MeshStandardMaterial({color: ix===1 ? COLORS.G : COLORS.X}),
+    new THREE.MeshStandardMaterial({color: ix===-1 ? COLORS.B : COLORS.X}),
+    new THREE.MeshStandardMaterial({color: iy===1 ? COLORS.W : COLORS.X}),
+    new THREE.MeshStandardMaterial({color: iy===-1 ? COLORS.Y : COLORS.X}),
+    new THREE.MeshStandardMaterial({color: iz===1 ? COLORS.R : COLORS.X}),
+    new THREE.MeshStandardMaterial({color: iz===-1 ? COLORS.O : COLORS.X}),
+  ];
 }
 
 function buildCube(){
-  // Clear
   while(cubieMeshes.children.length) cubieMeshes.remove(cubieMeshes.children[0]);
   cubies.length = 0;
-
   const geo = new THREE.BoxGeometry(CUBIE_SIZE, CUBIE_SIZE, CUBIE_SIZE);
-
-  for(let x=-1;x<=1;x++){
-    for(let y=-1;y<=1;y++){
+  for(let x=-1;x<=1;x++)
+    for(let y=-1;y<=1;y++)
       for(let z=-1;z<=1;z++){
-        const mats = makeCubieMaterials(x,y,z);
-        const mesh = new THREE.Mesh(geo, mats);
+        const mesh = new THREE.Mesh(geo, makeCubieMaterials(x,y,z));
         mesh.position.set(x*(1+GAP), y*(1+GAP), z*(1+GAP));
         cubieMeshes.add(mesh);
         cubies.push({mesh, ix:x, iy:y, iz:z});
       }
-    }
-  }
 }
 
-// ---- Layer rotation ----
-// axis: 'x','y','z'; layer: -1,0,1; angle: ±90 or ±180
 let isAnimating = false;
 const rotationGroup = new THREE.Group();
 scene.add(rotationGroup);
@@ -267,461 +268,261 @@ function getLayerCubies(axis, layer){
   return cubies.filter(c => {
     if(axis==='x') return c.ix === layer;
     if(axis==='y') return c.iy === layer;
-    if(axis==='z') return c.iz === layer;
+    return c.iz === layer;
   });
 }
-
-function roundPos(v){ return Math.round(v * 10) / 10; }
 
 function animateLayerRotation(axis, layer, angleDeg, duration){
   return new Promise(resolve => {
     if(isAnimating){resolve();return;}
     isAnimating = true;
-
     const affected = getLayerCubies(axis, layer);
-
-    // Move affected cubies into rotationGroup
     rotationGroup.rotation.set(0,0,0);
     rotationGroup.position.set(0,0,0);
-    affected.forEach(c => {
-      cubieMeshes.remove(c.mesh);
-      rotationGroup.add(c.mesh);
-    });
-
+    affected.forEach(c => { cubieMeshes.remove(c.mesh); rotationGroup.add(c.mesh); });
     const angleRad = THREE.MathUtils.degToRad(angleDeg);
-    const axisVec = axis==='x' ? new THREE.Vector3(1,0,0) :
-                    axis==='y' ? new THREE.Vector3(0,1,0) :
-                                 new THREE.Vector3(0,0,1);
-
+    const axisVec = axis==='x'?new THREE.Vector3(1,0,0):axis==='y'?new THREE.Vector3(0,1,0):new THREE.Vector3(0,0,1);
     const startTime = performance.now();
-
     function tick(){
-      const elapsed = performance.now() - startTime;
-      const t = Math.min(elapsed / duration, 1);
-      // Ease out cubic
-      const ease = 1 - Math.pow(1 - t, 3);
-      const currentAngle = angleRad * ease;
-
+      const t = Math.min((performance.now()-startTime)/duration, 1);
+      const ease = 1-Math.pow(1-t,3);
       rotationGroup.rotation.set(0,0,0);
-      rotationGroup.rotateOnAxis(axisVec, currentAngle);
-
-      if(t < 1){
-        requestAnimationFrame(tick);
-      } else {
-        // Finalize: update world positions, move back
-        rotationGroup.rotation.set(0,0,0);
-        rotationGroup.rotateOnAxis(axisVec, angleRad);
-        rotationGroup.updateMatrixWorld(true);
-
-        affected.forEach(c => {
-          // Get world position
-          const wp = new THREE.Vector3();
-          c.mesh.getWorldPosition(wp);
-          const wq = new THREE.Quaternion();
-          c.mesh.getWorldQuaternion(wq);
-
-          rotationGroup.remove(c.mesh);
-          cubieMeshes.add(c.mesh);
-
-          c.mesh.position.copy(wp);
-          c.mesh.quaternion.copy(wq);
-
-          // Update logical indices
-          c.ix = Math.round(wp.x / (1+GAP));
-          c.iy = Math.round(wp.y / (1+GAP));
-          c.iz = Math.round(wp.z / (1+GAP));
-        });
-
-        rotationGroup.rotation.set(0,0,0);
-        isAnimating = false;
-        resolve();
-      }
+      rotationGroup.rotateOnAxis(axisVec, angleRad*ease);
+      if(t<1){ requestAnimationFrame(tick); return; }
+      rotationGroup.rotation.set(0,0,0);
+      rotationGroup.rotateOnAxis(axisVec, angleRad);
+      rotationGroup.updateMatrixWorld(true);
+      affected.forEach(c => {
+        const wp=new THREE.Vector3(); c.mesh.getWorldPosition(wp);
+        const wq=new THREE.Quaternion(); c.mesh.getWorldQuaternion(wq);
+        rotationGroup.remove(c.mesh); cubieMeshes.add(c.mesh);
+        c.mesh.position.copy(wp); c.mesh.quaternion.copy(wq);
+        c.ix=Math.round(wp.x/(1+GAP)); c.iy=Math.round(wp.y/(1+GAP)); c.iz=Math.round(wp.z/(1+GAP));
+      });
+      rotationGroup.rotation.set(0,0,0);
+      isAnimating=false; resolve();
     }
     requestAnimationFrame(tick);
   });
 }
 
-// ---- Move notation to layer rotation mapping ----
 const MOVE_MAP = {
-  'U':  {axis:'y', layer: 1, angle:-90},
-  "U'": {axis:'y', layer: 1, angle: 90},
-  'U2': {axis:'y', layer: 1, angle:-180},
-  'D':  {axis:'y', layer:-1, angle: 90},
-  "D'": {axis:'y', layer:-1, angle:-90},
-  'D2': {axis:'y', layer:-1, angle: 180},
-  'F':  {axis:'z', layer: 1, angle:-90},
-  "F'": {axis:'z', layer: 1, angle: 90},
-  'F2': {axis:'z', layer: 1, angle:-180},
-  'B':  {axis:'z', layer:-1, angle: 90},
-  "B'": {axis:'z', layer:-1, angle:-90},
-  'B2': {axis:'z', layer:-1, angle: 180},
-  'R':  {axis:'x', layer: 1, angle:-90},
-  "R'": {axis:'x', layer: 1, angle: 90},
-  'R2': {axis:'x', layer: 1, angle:-180},
-  'L':  {axis:'x', layer:-1, angle: 90},
-  "L'": {axis:'x', layer:-1, angle:-90},
-  'L2': {axis:'x', layer:-1, angle: 180},
+  'U':{axis:'y',layer:1,angle:-90},"U'":{axis:'y',layer:1,angle:90},'U2':{axis:'y',layer:1,angle:-180},
+  'D':{axis:'y',layer:-1,angle:90},"D'":{axis:'y',layer:-1,angle:-90},'D2':{axis:'y',layer:-1,angle:180},
+  'F':{axis:'z',layer:1,angle:-90},"F'":{axis:'z',layer:1,angle:90},'F2':{axis:'z',layer:1,angle:-180},
+  'B':{axis:'z',layer:-1,angle:90},"B'":{axis:'z',layer:-1,angle:-90},'B2':{axis:'z',layer:-1,angle:180},
+  'R':{axis:'x',layer:1,angle:-90},"R'":{axis:'x',layer:1,angle:90},'R2':{axis:'x',layer:1,angle:-180},
+  'L':{axis:'x',layer:-1,angle:90},"L'":{axis:'x',layer:-1,angle:-90},'L2':{axis:'x',layer:-1,angle:180},
 };
 
 async function executeMove(notation, duration){
-  const m = MOVE_MAP[notation];
-  if(!m) return;
+  const m=MOVE_MAP[notation]; if(!m)return;
   await animateLayerRotation(m.axis, m.layer, m.angle, duration);
 }
 
-// ---- Camera orbit (drag) ----
-let orbiting = false, orbX, orbY;
-let cameraTheta = Math.PI/4, cameraPhi = Math.PI/6;
-const cameraRadius = 8.5;
+// Camera orbit
+let orbiting=false, orbX, orbY;
+let cameraTheta=Math.PI/4, cameraPhi=Math.PI/6;
+const cameraRadius=8.5;
 
 function updateCamera(){
-  camera.position.x = cameraRadius * Math.cos(cameraPhi) * Math.sin(cameraTheta);
-  camera.position.y = cameraRadius * Math.sin(cameraPhi);
-  camera.position.z = cameraRadius * Math.cos(cameraPhi) * Math.cos(cameraTheta);
+  camera.position.x=cameraRadius*Math.cos(cameraPhi)*Math.sin(cameraTheta);
+  camera.position.y=cameraRadius*Math.sin(cameraPhi);
+  camera.position.z=cameraRadius*Math.cos(cameraPhi)*Math.cos(cameraTheta);
   camera.lookAt(0,0,0);
 }
 
-canvas.addEventListener('mousedown', e=>{orbiting=true;orbX=e.clientX;orbY=e.clientY});
-window.addEventListener('mousemove', e=>{
+canvas.addEventListener('mousedown',e=>{orbiting=true;orbX=e.clientX;orbY=e.clientY});
+window.addEventListener('mousemove',e=>{
   if(!orbiting)return;
-  cameraTheta += (e.clientX-orbX)*0.008;
-  cameraPhi += (e.clientY-orbY)*0.008;
-  cameraPhi = Math.max(-Math.PI/3, Math.min(Math.PI/3, cameraPhi));
-  orbX=e.clientX;orbY=e.clientY;
-  updateCamera();
+  cameraTheta+=(e.clientX-orbX)*0.008; cameraPhi+=(e.clientY-orbY)*0.008;
+  cameraPhi=Math.max(-Math.PI/3,Math.min(Math.PI/3,cameraPhi));
+  orbX=e.clientX;orbY=e.clientY; updateCamera();
 });
-window.addEventListener('mouseup', ()=>{orbiting=false});
-
-canvas.addEventListener('touchstart', e=>{
+window.addEventListener('mouseup',()=>{orbiting=false});
+canvas.addEventListener('touchstart',e=>{
   if(e.touches.length===1){orbiting=true;orbX=e.touches[0].clientX;orbY=e.touches[0].clientY}
 },{passive:true});
-window.addEventListener('touchmove', e=>{
+window.addEventListener('touchmove',e=>{
   if(!orbiting||e.touches.length!==1)return;
-  cameraTheta += (e.touches[0].clientX-orbX)*0.008;
-  cameraPhi += (e.touches[0].clientY-orbY)*0.008;
-  cameraPhi = Math.max(-Math.PI/3, Math.min(Math.PI/3, cameraPhi));
-  orbX=e.touches[0].clientX;orbY=e.touches[0].clientY;
-  updateCamera();
+  cameraTheta+=(e.touches[0].clientX-orbX)*0.008;
+  cameraPhi+=(e.touches[0].clientY-orbY)*0.008;
+  cameraPhi=Math.max(-Math.PI/3,Math.min(Math.PI/3,cameraPhi));
+  orbX=e.touches[0].clientX;orbY=e.touches[0].clientY; updateCamera();
 },{passive:true});
-window.addEventListener('touchend', ()=>{orbiting=false});
+window.addEventListener('touchend',()=>{orbiting=false});
 
-// ---- Resize ----
 function resize(){
-  const w = canvas.parentElement.clientWidth;
-  const h = Math.min(450, window.innerHeight * 0.42);
-  canvas.width = w * window.devicePixelRatio;
-  canvas.height = h * window.devicePixelRatio;
-  canvas.style.width = w+'px';
-  canvas.style.height = h+'px';
+  const rect = canvas.getBoundingClientRect();
+  const w = rect.width;
+  const h = rect.height;
+  if(w===0||h===0) return;
+  const dpr = Math.min(window.devicePixelRatio, 2);
+  canvas.width = w * dpr;
+  canvas.height = h * dpr;
   renderer.setSize(w, h);
   camera.aspect = w/h;
   camera.updateProjectionMatrix();
 }
 window.addEventListener('resize', resize);
 
-// ---- Render loop ----
-function renderLoop(){
-  requestAnimationFrame(renderLoop);
-  renderer.render(scene, camera);
-}
+function renderLoop(){ requestAnimationFrame(renderLoop); renderer.render(scene, camera); }
 
-// ---- Arrow display ----
+// Arrow display (inline, compact)
 const arrowBox = document.getElementById('arrowBox');
-
 const MOVE_DESC = {
-  'U':'윗면 시계방향', "U'":'윗면 반시계방향', 'U2':'윗면 180°',
-  'D':'아랫면 시계방향', "D'":'아랫면 반시계방향', 'D2':'아랫면 180°',
-  'F':'앞면 시계방향', "F'":'앞면 반시계방향', 'F2':'앞면 180°',
-  'B':'뒷면 시계방향', "B'":'뒷면 반시계방향', 'B2':'뒷면 180°',
-  'R':'오른면 시계방향', "R'":'오른면 반시계방향', 'R2':'오른면 180°',
-  'L':'왼면 시계방향', "L'":'왼면 반시계방향', 'L2':'왼면 180°',
+  'U':'윗면 ↻',"U'":'윗면 ↺','U2':'윗면 180°',
+  'D':'아랫면 ↻',"D'":'아랫면 ↺','D2':'아랫면 180°',
+  'F':'앞면 ↻',"F'":'앞면 ↺','F2':'앞면 180°',
+  'B':'뒷면 ↻',"B'":'뒷면 ↺','B2':'뒷면 180°',
+  'R':'오른면 ↻',"R'":'오른면 ↺','R2':'오른면 180°',
+  'L':'왼면 ↻',"L'":'왼면 ↺','L2':'왼면 180°',
 };
 
 function getArrowSVG(notation){
-  const is180 = notation.includes('2');
-  const isPrime = notation.includes("'");
-  const face = notation[0];
-
-  // Color by face
-  const faceColors = {U:'#888',D:'#ffd426',F:'#c41e3a',B:'#ff5800',L:'#0051ba',R:'#009e60'};
-  const col = faceColors[face] || '#c43e1c';
-
-  if(is180){
-    return `<svg class="arrow-svg" viewBox="0 0 60 60">
-      <path d="M30 8 A22 22 0 1 1 8 30" fill="none" stroke="${col}" stroke-width="4" stroke-linecap="round"/>
-      <polygon points="8,30 2,22 14,22" fill="${col}"/>
-      <path d="M30 8 A22 22 0 0 0 52 30" fill="none" stroke="${col}" stroke-width="4" stroke-linecap="round" stroke-dasharray="4 3"/>
-      <polygon points="52,30 46,22 58,22" fill="${col}"/>
-    </svg>`;
-  }
-
-  if(isPrime){
-    // Counter-clockwise
-    return `<svg class="arrow-svg" viewBox="0 0 60 60">
-      <path d="M42 10 A22 22 0 1 0 10 35" fill="none" stroke="${col}" stroke-width="4" stroke-linecap="round"/>
-      <polygon points="10,35 4,26 16,27" fill="${col}"/>
-    </svg>`;
-  }
-
-  // Clockwise
-  return `<svg class="arrow-svg" viewBox="0 0 60 60">
-    <path d="M18 10 A22 22 0 1 1 50 35" fill="none" stroke="${col}" stroke-width="4" stroke-linecap="round"/>
-    <polygon points="50,35 56,26 44,27" fill="${col}"/>
-  </svg>`;
+  const is180=notation.includes('2'), isPrime=notation.includes("'"), face=notation[0];
+  const faceColors={U:'#888',D:'#ffd426',F:'#c41e3a',B:'#ff5800',L:'#0051ba',R:'#009e60'};
+  const col=faceColors[face]||'#c43e1c';
+  if(is180) return `<svg class="arrow-svg" viewBox="0 0 60 60"><path d="M30 8 A22 22 0 1 1 8 30" fill="none" stroke="${col}" stroke-width="4.5" stroke-linecap="round"/><polygon points="8,30 2,22 14,22" fill="${col}"/><path d="M30 8 A22 22 0 0 0 52 30" fill="none" stroke="${col}" stroke-width="4.5" stroke-linecap="round" stroke-dasharray="4 3"/><polygon points="52,30 46,22 58,22" fill="${col}"/></svg>`;
+  if(isPrime) return `<svg class="arrow-svg" viewBox="0 0 60 60"><path d="M42 10 A22 22 0 1 0 10 35" fill="none" stroke="${col}" stroke-width="4.5" stroke-linecap="round"/><polygon points="10,35 4,26 16,27" fill="${col}"/></svg>`;
+  return `<svg class="arrow-svg" viewBox="0 0 60 60"><path d="M18 10 A22 22 0 1 1 50 35" fill="none" stroke="${col}" stroke-width="4.5" stroke-linecap="round"/><polygon points="50,35 56,26 44,27" fill="${col}"/></svg>`;
 }
 
-function showArrow(notation, reason){
-  const desc = MOVE_DESC[notation] || notation;
-  const reasonHtml = reason ? `<div class="arrow-reason">${reason}</div>` : '';
-  arrowBox.innerHTML = `
-    ${getArrowSVG(notation)}
-    <div class="arrow-label">${notation}</div>
-    <div class="arrow-desc">${desc}</div>
-    ${reasonHtml}
-  `;
+function showArrow(notation){
+  const desc=MOVE_DESC[notation]||notation;
+  arrowBox.innerHTML=`${getArrowSVG(notation)}<div><div class="arrow-label">${notation}</div><div class="arrow-desc">${desc}</div></div>`;
 }
 function clearArrow(){ arrowBox.innerHTML=''; }
 
-// ---- Move reason generator ----
-const FACE_KO = {U:'윗면(흰)', D:'아랫면(노랑)', F:'앞면(빨강)', B:'뒷면(주황)', L:'왼면(파랑)', R:'오른면(초록)'};
-
-function getMoveReason(idx, total){
-  // Divide solve into conceptual phases
-  const progress = idx / total;
-  const face = solveMoves[idx][0];
-  const faceKo = FACE_KO[face] || face;
-  // Which scramble move this undoes (scramble was reversed)
-  const undoIdx = total - 1 - idx;
-  const originalScramble = scrambleMoves[undoIdx];
-
-  let phase, detail;
-  if(progress < 0.25){
-    phase = '1단계: 기본 복원';
-    detail = `섞기 ${undoIdx+1}번째 이동(${originalScramble})을 되돌립니다. ${faceKo}을 원래 위치로 복원합니다.`;
-  } else if(progress < 0.5){
-    phase = '2단계: 중간층 복원';
-    detail = `섞기 ${undoIdx+1}번째 이동(${originalScramble})을 되돌립니다. ${faceKo}의 조각을 맞춥니다.`;
-  } else if(progress < 0.75){
-    phase = '3단계: 상위층 복원';
-    detail = `섞기 ${undoIdx+1}번째 이동(${originalScramble})을 되돌립니다. ${faceKo} 방향의 큐비를 정렬합니다.`;
-  } else {
-    phase = '4단계: 최종 복원';
-    detail = `섞기 ${undoIdx+1}번째 이동(${originalScramble})을 되돌립니다. ${faceKo}을 최종 위치로 맞춥니다.`;
-  }
-  return `[${phase}] ${detail}`;
-}
-
-// ---- Move display ----
+// Move display
 const moveDisplay = document.getElementById('moveDisplay');
-
 function updateMoveDisplay(moves, idx){
   if(!moves.length){moveDisplay.innerHTML='';return;}
   let html='';
-  const win = 6;
-  const start = Math.max(0, idx - win);
-  const end = Math.min(moves.length, idx + win + 1);
-  if(start > 0) html += '<span class="mv done">...</span>';
+  const win=5, start=Math.max(0,idx-win), end=Math.min(moves.length,idx+win+1);
+  if(start>0) html+='<span class="mv done">…</span>';
   for(let i=start;i<end;i++){
     if(i<idx) html+=`<span class="mv done">${moves[i]}</span>`;
     else if(i===idx) html+=`<span class="mv current">${moves[i]}</span>`;
     else html+=`<span class="mv future">${moves[i]}</span>`;
   }
-  if(end < moves.length) html += '<span class="mv future">...</span>';
+  if(end<moves.length) html+='<span class="mv future">…</span>';
   moveDisplay.innerHTML=html;
 }
 
-// ---- Scramble & Solve ----
-let scrambleMoves = [];
-let solveMoves = [];
-let currentSolveIdx = 0;
-let solving = false;
+// Scramble & Solve
+let scrambleMoves=[], solveMoves=[], currentSolveIdx=0, solving=false;
 
 function invertMove(m){
-  if(m.includes('2')) return m;
-  if(m.includes("'")) return m[0];
+  if(m.includes('2'))return m;
+  if(m.includes("'"))return m[0];
   return m+"'";
 }
 
 async function doScramble(){
-  if(isAnimating || solving) return;
-
-  buildCube();
-  scrambleMoves = [];
-  solveMoves = [];
-  currentSolveIdx = 0;
-
-  const faces = ['U','D','F','B','L','R'];
-  const mods = ['', "'", '2'];
-  let last = '';
-  const numMoves = 18 + Math.floor(Math.random()*8);
-
-  statusText.textContent = '섞는중...';
-  scrambleBtn.disabled = true;
-
+  if(isAnimating||solving)return;
+  buildCube(); scrambleMoves=[]; solveMoves=[]; currentSolveIdx=0;
+  const faces=['U','D','F','B','L','R'], mods=['', "'", '2'];
+  let last=''; const numMoves=18+Math.floor(Math.random()*8);
+  statusText.textContent='섞는중...'; scrambleBtn.disabled=true;
   for(let i=0;i<numMoves;i++){
-    let f;
-    do { f = faces[Math.floor(Math.random()*6)]; } while(f===last);
-    last = f;
-    const mod = mods[Math.floor(Math.random()*3)];
-    const mv = f + mod;
-    scrambleMoves.push(mv);
-    showArrow(mv);
-    await executeMove(mv, Math.max(80, speedMs * 0.3));
+    let f; do{f=faces[Math.floor(Math.random()*6)]}while(f===last); last=f;
+    const mv=f+mods[Math.floor(Math.random()*3)];
+    scrambleMoves.push(mv); showArrow(mv);
+    await executeMove(mv, Math.max(80, speedMs*0.3));
   }
-
-  solveMoves = scrambleMoves.map(invertMove).reverse();
-  moveTotalEl.textContent = solveMoves.length;
-  moveIdxEl.textContent = '0';
-  statusText.textContent = '섞기 완료';
-  clearArrow();
-  updateMoveDisplay(solveMoves, -1);
-  scrambleBtn.disabled = false;
-  updateBtnState();
-}
-
-function isSolved(){
-  // Check: each face of each cubie at correct position
-  // Simpler: check all cubies at integer positions and orientation
-  // Actually, we check if logical positions match initial, but since we track
-  // via scramble inverse, just check if all solveMoves have been applied
-  return currentSolveIdx >= solveMoves.length;
+  solveMoves=scrambleMoves.map(invertMove).reverse();
+  moveTotalEl.textContent=solveMoves.length; moveIdxEl.textContent='0';
+  statusText.textContent='섞기 완료'; clearArrow();
+  updateMoveDisplay(solveMoves,-1); scrambleBtn.disabled=false; updateBtnState();
 }
 
 async function animateSolve(){
-  if(solving || isAnimating) return;
-  solving = true;
-  scrambleBtn.disabled = true;
-  solveBtn.disabled = true;
-  stepBtn.disabled = true;
-  statusText.textContent = '풀이중...';
-
-  while(currentSolveIdx < solveMoves.length && solving){
-    const mv = solveMoves[currentSolveIdx];
-    updateMoveDisplay(solveMoves, currentSolveIdx);
-    showArrow(mv, getMoveReason(currentSolveIdx, solveMoves.length));
-    await executeMove(mv, speedMs);
-    currentSolveIdx++;
-    moveIdxEl.textContent = currentSolveIdx;
-    // Small pause between moves
-    await new Promise(r => setTimeout(r, speedMs * 0.15));
+  if(solving||isAnimating)return;
+  solving=true; scrambleBtn.disabled=true; solveBtn.disabled=true; stepBtn.disabled=true;
+  statusText.textContent='풀이중...';
+  while(currentSolveIdx<solveMoves.length && solving){
+    const mv=solveMoves[currentSolveIdx];
+    updateMoveDisplay(solveMoves,currentSolveIdx); showArrow(mv);
+    await executeMove(mv,speedMs); currentSolveIdx++;
+    moveIdxEl.textContent=currentSolveIdx;
+    await new Promise(r=>setTimeout(r,speedMs*0.15));
   }
-
-  if(currentSolveIdx >= solveMoves.length){
-    statusText.textContent = '완료!';
-    clearArrow();
-    moveDisplay.innerHTML = '<span class="mv current">✓ 풀이 완료</span>';
-    // Verify visually - all faces should be uniform color
-    verifyAndReport();
+  if(currentSolveIdx>=solveMoves.length){
+    statusText.textContent='완료!'; clearArrow();
+    moveDisplay.innerHTML='<span class="mv current">✓ 완료</span>';
   }
-  solving = false;
-  scrambleBtn.disabled = false;
-  updateBtnState();
+  solving=false; scrambleBtn.disabled=false; updateBtnState();
 }
 
 async function stepOnce(){
-  if(isAnimating || currentSolveIdx >= solveMoves.length) return;
-  const mv = solveMoves[currentSolveIdx];
-  updateMoveDisplay(solveMoves, currentSolveIdx);
-  showArrow(mv, getMoveReason(currentSolveIdx, solveMoves.length));
-  stepBtn.disabled = true;
-  stepBackBtn.disabled = true;
-  await executeMove(mv, speedMs);
-  currentSolveIdx++;
-  moveIdxEl.textContent = currentSolveIdx;
-  statusText.textContent = `풀이중 (${currentSolveIdx}/${solveMoves.length})`;
-
-  if(currentSolveIdx >= solveMoves.length){
-    statusText.textContent = '완료!';
-    setTimeout(()=>{clearArrow();}, speedMs);
-    moveDisplay.innerHTML = '<span class="mv current">✓ 풀이 완료</span>';
-    verifyAndReport();
+  if(isAnimating||currentSolveIdx>=solveMoves.length)return;
+  const mv=solveMoves[currentSolveIdx];
+  updateMoveDisplay(solveMoves,currentSolveIdx); showArrow(mv);
+  stepBtn.disabled=true; stepBackBtn.disabled=true;
+  await executeMove(mv,speedMs); currentSolveIdx++;
+  moveIdxEl.textContent=currentSolveIdx;
+  statusText.textContent=`풀이중 (${currentSolveIdx}/${solveMoves.length})`;
+  if(currentSolveIdx>=solveMoves.length){
+    statusText.textContent='완료!'; setTimeout(clearArrow,speedMs);
+    moveDisplay.innerHTML='<span class="mv current">✓ 완료</span>';
   }
   updateBtnState();
 }
 
 async function stepBack(){
-  if(isAnimating || currentSolveIdx <= 0) return;
-  // Undo the last applied move by applying its inverse
+  if(isAnimating||currentSolveIdx<=0)return;
   currentSolveIdx--;
-  const mv = solveMoves[currentSolveIdx];
-  const undoMv = invertMove(mv);
-  updateMoveDisplay(solveMoves, currentSolveIdx);
-  const undoIdx = solveMoves.length - 1 - currentSolveIdx;
-  const reason = `되돌리기: 풀이 ${currentSolveIdx+1}번째(${mv})를 취소합니다.`;
-  showArrow(undoMv, reason);
-  stepBtn.disabled = true;
-  stepBackBtn.disabled = true;
-  await executeMove(undoMv, speedMs);
-  moveIdxEl.textContent = currentSolveIdx;
-  statusText.textContent = `풀이중 (${currentSolveIdx}/${solveMoves.length})`;
+  const mv=solveMoves[currentSolveIdx], undoMv=invertMove(mv);
+  updateMoveDisplay(solveMoves,currentSolveIdx); showArrow(undoMv);
+  stepBtn.disabled=true; stepBackBtn.disabled=true;
+  await executeMove(undoMv,speedMs);
+  moveIdxEl.textContent=currentSolveIdx;
+  statusText.textContent=`풀이중 (${currentSolveIdx}/${solveMoves.length})`;
   updateBtnState();
-}
-
-function verifyAndReport(){
-  // Since solve = exact inverse of scramble, it should always be solved
-  // But let's verify by checking cubie positions
-  let allCorrect = true;
-  for(const c of cubies){
-    const expected = {x: c.ix*(1+GAP), y: c.iy*(1+GAP), z: c.iz*(1+GAP)};
-    // Check ix,iy,iz match original conceptual position based on colors
-    // The initial position is encoded in the materials
-  }
-  // For inverse-scramble approach, it's mathematically guaranteed
 }
 
 function doReset(){
-  solving = false;
-  isAnimating = false;
-  scrambleMoves = [];
-  solveMoves = [];
-  currentSolveIdx = 0;
-  buildCube();
-  statusText.textContent = '준비';
-  moveIdxEl.textContent = '0';
-  moveTotalEl.textContent = '0';
-  moveDisplay.innerHTML = '';
-  clearArrow();
-  updateBtnState();
+  solving=false; isAnimating=false;
+  scrambleMoves=[]; solveMoves=[]; currentSolveIdx=0;
+  buildCube(); statusText.textContent='준비';
+  moveIdxEl.textContent='0'; moveTotalEl.textContent='0';
+  moveDisplay.innerHTML=''; clearArrow(); updateBtnState();
 }
 
 function updateBtnState(){
-  const hasForward = solveMoves.length > 0 && currentSolveIdx < solveMoves.length;
-  const hasBack = solveMoves.length > 0 && currentSolveIdx > 0;
-  solveBtn.disabled = !hasForward || solving || isAnimating;
-  stepBtn.disabled = !hasForward || solving || isAnimating;
-  stepBackBtn.disabled = !hasBack || solving || isAnimating;
+  const fwd=solveMoves.length>0&&currentSolveIdx<solveMoves.length;
+  const back=solveMoves.length>0&&currentSolveIdx>0;
+  solveBtn.disabled=!fwd||solving||isAnimating;
+  stepBtn.disabled=!fwd||solving||isAnimating;
+  stepBackBtn.disabled=!back||solving||isAnimating;
 }
 
-// ---- Speed ----
-let speedMs = 800;
-const speedSlider = document.getElementById('speedSlider');
-const speedValEl = document.getElementById('speedVal');
-const statusText = document.getElementById('statusText');
-const moveIdxEl = document.getElementById('moveIdx');
-const moveTotalEl = document.getElementById('moveTotal');
+let speedMs=800;
+const speedSlider=document.getElementById('speedSlider');
+const speedValEl=document.getElementById('speedVal');
+const statusText=document.getElementById('statusText');
+const moveIdxEl=document.getElementById('moveIdx');
+const moveTotalEl=document.getElementById('moveTotal');
+const stepBackBtn=document.getElementById('stepBackBtn');
+const scrambleBtn=document.getElementById('scrambleBtn');
 
 function updateSpeed(){
-  const v = parseInt(speedSlider.value);
-  // Map 1..10 -> 1500ms..150ms
-  speedMs = Math.round(1500 - (v-1) * 150);
-  speedValEl.textContent = (speedMs/1000).toFixed(1)+'초';
+  const v=parseInt(speedSlider.value);
+  speedMs=Math.round(1500-(v-1)*150);
+  speedValEl.textContent=(speedMs/1000).toFixed(1)+'초';
 }
-speedSlider.addEventListener('input', updateSpeed);
+speedSlider.addEventListener('input',updateSpeed);
 
-// ---- Events ----
-const stepBackBtn = document.getElementById('stepBackBtn');
-document.getElementById('scrambleBtn').addEventListener('click', doScramble);
-document.getElementById('solveBtn').addEventListener('click', animateSolve);
-document.getElementById('stepBtn').addEventListener('click', stepOnce);
-stepBackBtn.addEventListener('click', stepBack);
-document.getElementById('resetBtn').addEventListener('click', doReset);
+scrambleBtn.addEventListener('click',doScramble);
+document.getElementById('solveBtn').addEventListener('click',animateSolve);
+document.getElementById('stepBtn').addEventListener('click',stepOnce);
+stepBackBtn.addEventListener('click',stepBack);
+document.getElementById('resetBtn').addEventListener('click',doReset);
 
-// ---- Init ----
-buildCube();
-updateCamera();
-resize();
-updateSpeed();
-renderLoop();
+buildCube(); updateCamera(); updateSpeed(); renderLoop();
+// Delay resize to ensure layout is settled
+requestAnimationFrame(()=>{ resize(); requestAnimationFrame(resize); });
 </script>
 </body>
 </html>
