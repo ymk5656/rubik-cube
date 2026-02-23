@@ -159,6 +159,42 @@ body::before{
 body.manual-mode .auto-only{display:none}
 body.manual-mode .manual-only{display:flex}
 
+/* Difficulty buttons */
+.diff-row{display:flex;gap:0.2rem}
+.diff-btn{
+  font-family:'DM Mono',monospace;font-size:0.52rem;letter-spacing:0.02em;
+  padding:0.3rem 0.45rem;border:1.5px solid var(--border);
+  background:var(--surface);color:var(--text);border-radius:5px;
+  cursor:pointer;transition:all 0.15s;
+  -webkit-tap-highlight-color:transparent;touch-action:manipulation;
+}
+.diff-btn:hover{border-color:var(--accent);color:var(--accent)}
+.diff-btn:active{transform:scale(0.96)}
+.diff-btn:disabled{opacity:0.3;cursor:not-allowed;transform:none}
+.diff-btn.easy{border-bottom:2.5px solid #4CAF50}
+.diff-btn.moderate{border-bottom:2.5px solid #FF9800}
+.diff-btn.hard{border-bottom:2.5px solid #f44336}
+
+/* Hint button */
+.btn--hint{background:#5c6bc0;color:#fff;border-color:#5c6bc0}
+.btn--hint:hover{background:#3f51b5;border-color:#3f51b5;color:#fff}
+
+/* Hint display */
+.hint-display{
+  font-family:'DM Mono',monospace;font-size:0.6rem;
+  color:var(--text-dim);text-align:center;
+  padding:0.05rem 0.5rem;flex-shrink:0;
+  display:none;align-items:center;justify-content:center;gap:0.3rem;
+  min-height:1.3em;
+}
+body.manual-mode .hint-display{display:flex}
+.hint-display .hint-move{
+  background:#5c6bc0;color:#fff;padding:0.15rem 0.4rem;
+  border-radius:4px;font-weight:600;font-size:0.7rem;
+}
+.hint-display .hint-remaining{color:var(--text-dim);font-size:0.5rem}
+.hint-display .arrow-svg{width:22px;height:22px;vertical-align:middle}
+
 /* Confetti overlay */
 .confetti-overlay{
   position:fixed;inset:0;pointer-events:none;z-index:1000;
@@ -218,6 +254,7 @@ body.manual-mode .manual-only{display:flex}
     <div class="arrow-inline" id="arrowBox"></div>
   </div>
   <div class="move-display auto-only" id="moveDisplay"></div>
+  <div class="hint-display" id="hintDisplay"></div>
 
   <div class="cube-area">
     <div class="face-btns manual-only" id="leftBtns">
@@ -252,7 +289,13 @@ body.manual-mode .manual-only{display:flex}
         <div class="speed-val" id="speedVal">0.8s</div>
       </div>
     </div>
-    <button class="btn" id="scrambleBtn">Scramble</button>
+    <button class="btn auto-only" id="scrambleBtn">Scramble</button>
+    <div class="diff-row manual-only">
+      <button class="diff-btn easy" id="diffEasy">Easy</button>
+      <button class="diff-btn moderate" id="diffModerate">Medium</button>
+      <button class="diff-btn hard" id="diffHard">Hard</button>
+    </div>
+    <button class="btn btn--hint manual-only" id="hintBtn">Hint</button>
     <button class="btn btn--accent auto-only" id="solveBtn" disabled>Solve</button>
     <div class="step-row auto-only">
       <button class="btn" id="stepBackBtn" disabled>◀</button>
@@ -506,6 +549,73 @@ async function doScramble(){
   updateBtnState();
 }
 
+// Manual mode scramble with difficulty
+let manualSolution=[];  // solution moves (reverse of scramble)
+let manualHintIdx=0;    // tracks which hint to show next
+const hintDisplay=document.getElementById('hintDisplay');
+
+async function doManualScramble(numMoves){
+  if(isAnimating||solving)return;
+  buildCube();scrambleMoves=[];manualSolution=[];manualHintIdx=0;
+  manualMoveCount=0;manualCountEl.textContent='0';
+  hintDisplay.innerHTML='';
+  const faces=['U','D','F','B','L','R'],mods=['', "'"];
+  let last='';
+  statusText.textContent='Scrambling...';
+  setDiffBtnsEnabled(false);setFaceBtnsEnabled(false);
+  document.getElementById('hintBtn').disabled=true;
+  for(let i=0;i<numMoves;i++){
+    let f;do{f=faces[Math.floor(Math.random()*6)]}while(f===last);last=f;
+    const mv=f+mods[Math.floor(Math.random()*2)];
+    scrambleMoves.push(mv);showArrow(mv);
+    await executeMove(mv,Math.max(80,speedMs*0.3));
+  }
+  manualSolution=scrambleMoves.map(invertMove).reverse();
+  manualHintIdx=0;
+  statusText.textContent='Scrambled ('+numMoves+' moves)';clearArrow();
+  setDiffBtnsEnabled(true);setFaceBtnsEnabled(true);
+  document.getElementById('hintBtn').disabled=false;
+}
+
+function setDiffBtnsEnabled(enabled){
+  document.getElementById('diffEasy').disabled=!enabled;
+  document.getElementById('diffModerate').disabled=!enabled;
+  document.getElementById('diffHard').disabled=!enabled;
+}
+
+// Hint system — track user moves and compare to solution
+function showHint(){
+  if(manualSolution.length===0){
+    hintDisplay.innerHTML='<span style="color:var(--text-dim)">Scramble first!</span>';
+    return;
+  }
+  if(manualHintIdx>=manualSolution.length){
+    hintDisplay.innerHTML='<span style="color:var(--accent2)">Already solved!</span>';
+    return;
+  }
+  const nextMove=manualSolution[manualHintIdx];
+  const remaining=manualSolution.length-manualHintIdx;
+  hintDisplay.innerHTML=
+    'Next: <span class="hint-move">'+nextMove+'</span> '+
+    getArrowSVG(nextMove)+
+    ' <span class="hint-remaining">('+remaining+' left)</span>';
+}
+
+// When user makes a manual move, check if it matches solution
+function updateHintTracking(notation){
+  if(manualSolution.length===0||manualHintIdx>=manualSolution.length)return;
+  if(notation===manualSolution[manualHintIdx]){
+    // Correct move — advance hint
+    manualHintIdx++;
+  }else{
+    // Wrong move — append its inverse to the solution
+    manualSolution.splice(manualHintIdx,0,invertMove(notation));
+    manualHintIdx++;
+  }
+  // Clear hint display after move
+  hintDisplay.innerHTML='';
+}
+
 // Auto solve
 async function animateSolve(){
   if(solving||isAnimating)return;
@@ -556,10 +666,12 @@ function doReset(){
   solving=false;isAnimating=false;
   scrambleMoves=[];solveMoves=[];currentSolveIdx=0;
   manualMoveCount=0;manualCountEl.textContent='0';
+  manualSolution=[];manualHintIdx=0;hintDisplay.innerHTML='';
   buildCube();statusText.textContent='Ready';
   moveIdxEl.textContent='0';moveTotalEl.textContent='0';
   moveDisplay.innerHTML='';clearArrow();updateBtnState();
-  setFaceBtnsEnabled(true);
+  setFaceBtnsEnabled(true);setDiffBtnsEnabled(true);
+  document.getElementById('hintBtn').disabled=false;
 }
 
 function updateBtnState(){
@@ -578,18 +690,23 @@ function setFaceBtnsEnabled(enabled){
 async function doManualMove(notation){
   if(isAnimating||solving)return;
   setFaceBtnsEnabled(false);
+  document.getElementById('hintBtn').disabled=true;
   showArrow(notation);
   statusText.textContent=MOVE_DESC[notation]||notation;
   await executeMove(notation,speedMs);
   manualMoveCount++;
   manualCountEl.textContent=manualMoveCount;
+  updateHintTracking(notation);
   setFaceBtnsEnabled(true);
+  document.getElementById('hintBtn').disabled=false;
 
   // Check if solved in manual mode
   if(manualMode && manualMoveCount>0 && checkSolved()){
     statusText.textContent='Solved!';
     clearArrow();
     setFaceBtnsEnabled(false);
+    document.getElementById('hintBtn').disabled=true;
+    hintDisplay.innerHTML='';
     launchConfetti();
   }
 }
@@ -790,6 +907,12 @@ document.getElementById('solveBtn').addEventListener('click',animateSolve);
 document.getElementById('stepBtn').addEventListener('click',stepOnce);
 stepBackBtn.addEventListener('click',stepBack);
 document.getElementById('resetBtn').addEventListener('click',doReset);
+
+// Manual difficulty scramble buttons
+document.getElementById('diffEasy').addEventListener('click',()=>doManualScramble(4+Math.floor(Math.random()*2)));
+document.getElementById('diffModerate').addEventListener('click',()=>doManualScramble(6+Math.floor(Math.random()*3)));
+document.getElementById('diffHard').addEventListener('click',()=>doManualScramble(10+Math.floor(Math.random()*3)));
+document.getElementById('hintBtn').addEventListener('click',showHint);
 
 // Keyboard shortcuts for manual mode
 window.addEventListener('keydown',e=>{
