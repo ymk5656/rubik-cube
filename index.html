@@ -159,6 +159,31 @@ body::before{
 body.manual-mode .auto-only{display:none}
 body.manual-mode .manual-only{display:flex}
 
+/* Confetti overlay */
+.confetti-overlay{
+  position:fixed;inset:0;pointer-events:none;z-index:1000;
+}
+.congrats-msg{
+  position:fixed;top:50%;left:50%;transform:translate(-50%,-50%) scale(0);
+  font-family:'Sora',sans-serif;font-size:clamp(1.5rem,5vw,3rem);font-weight:800;
+  color:var(--accent);text-align:center;
+  text-shadow:0 2px 15px rgba(196,62,28,0.3);
+  z-index:1001;pointer-events:none;
+  animation:congratsPop 0.6s ease-out forwards;
+}
+.congrats-msg .sub{
+  display:block;font-size:0.4em;font-weight:400;color:var(--text-dim);margin-top:0.3em;
+}
+@keyframes congratsPop{
+  0%{transform:translate(-50%,-50%) scale(0);opacity:0}
+  50%{transform:translate(-50%,-50%) scale(1.15);opacity:1}
+  100%{transform:translate(-50%,-50%) scale(1);opacity:1}
+}
+@keyframes congratsFade{
+  0%{opacity:1}
+  100%{opacity:0;transform:translate(-50%,-50%) scale(0.8)}
+}
+
 @media(max-width:480px){
   .header{padding:0.35rem 0.5rem 0.1rem}
   .controls{gap:0.25rem;padding:0.25rem 0.3rem}
@@ -526,10 +551,12 @@ async function doManualMove(notation){
   manualCountEl.textContent=manualMoveCount;
   setFaceBtnsEnabled(true);
 
-  // Check if solved
-  if(checkSolved()){
+  // Check if solved in manual mode
+  if(manualMode && manualMoveCount>0 && checkSolved()){
     statusText.textContent='Solved!';
     clearArrow();
+    setFaceBtnsEnabled(false);
+    launchConfetti();
   }
 }
 
@@ -555,6 +582,72 @@ document.querySelectorAll('.face-btn').forEach(btn=>{
   });
 });
 
+// Cube scale for manual mode
+function setCubeScale(s){
+  cubieMeshes.scale.set(s,s,s);
+  rotationGroup.scale.set(s,s,s);
+  camera.fov = s < 1 ? 55 : 40;
+  camera.updateProjectionMatrix();
+}
+
+// Confetti celebration
+function launchConfetti(){
+  const canvas2=document.createElement('canvas');
+  canvas2.className='confetti-overlay';
+  canvas2.width=window.innerWidth;canvas2.height=window.innerHeight;
+  document.body.appendChild(canvas2);
+  const ctx=canvas2.getContext('2d');
+  const colors=['#c41e3a','#ffd426','#009e60','#0051ba','#ff5800','#ff69b4','#FFD700','#00CED1'];
+  const particles=[];
+  for(let i=0;i<150;i++){
+    particles.push({
+      x:canvas2.width*0.5+(Math.random()-0.5)*100,
+      y:canvas2.height*0.5,
+      vx:(Math.random()-0.5)*12,
+      vy:-(Math.random()*14+4),
+      w:Math.random()*8+4,
+      h:Math.random()*6+3,
+      color:colors[Math.floor(Math.random()*colors.length)],
+      rot:Math.random()*Math.PI*2,
+      rotV:(Math.random()-0.5)*0.3,
+      gravity:0.18+Math.random()*0.08,
+      life:1
+    });
+  }
+  // Show congratulations message
+  const msg=document.createElement('div');
+  msg.className='congrats-msg';
+  msg.innerHTML='Congratulations!<span class="sub">Cube solved in '+manualMoveCount+' moves</span>';
+  document.body.appendChild(msg);
+
+  let frame=0;
+  function tick(){
+    ctx.clearRect(0,0,canvas2.width,canvas2.height);
+    let alive=false;
+    particles.forEach(p=>{
+      p.x+=p.vx;p.y+=p.vy;p.vy+=p.gravity;
+      p.rot+=p.rotV;
+      p.vx*=0.99;
+      if(frame>60) p.life-=0.015;
+      if(p.life<=0)return;
+      alive=true;
+      ctx.save();ctx.translate(p.x,p.y);ctx.rotate(p.rot);
+      ctx.globalAlpha=Math.max(0,p.life);
+      ctx.fillStyle=p.color;
+      ctx.fillRect(-p.w/2,-p.h/2,p.w,p.h);
+      ctx.restore();
+    });
+    frame++;
+    if(alive&&frame<300){requestAnimationFrame(tick);}
+    else{
+      canvas2.remove();
+      msg.style.animation='congratsFade 0.5s ease forwards';
+      setTimeout(()=>msg.remove(),600);
+    }
+  }
+  requestAnimationFrame(tick);
+}
+
 // Mode toggle
 const modeAutoBtn=document.getElementById('modeAuto');
 const modeManualBtn=document.getElementById('modeManual');
@@ -564,6 +657,7 @@ modeAutoBtn.addEventListener('click',()=>{
   document.body.classList.remove('manual-mode');
   modeAutoBtn.classList.add('active');
   modeManualBtn.classList.remove('active');
+  setCubeScale(1.0);
   requestAnimationFrame(resize);
 });
 modeManualBtn.addEventListener('click',()=>{
@@ -571,6 +665,7 @@ modeManualBtn.addEventListener('click',()=>{
   document.body.classList.add('manual-mode');
   modeManualBtn.classList.add('active');
   modeAutoBtn.classList.remove('active');
+  setCubeScale(0.58);
   requestAnimationFrame(resize);
 });
 
