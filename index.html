@@ -305,15 +305,12 @@ function buildCube(){
 }
 
 let isAnimating=false;
-const rotationGroup=new THREE.Group();
-scene.add(rotationGroup);
 
-// Pre-compute the 24 valid cube orientations (chiral octahedral group)
+// Pre-compute the 24 valid cube orientations
 const VALID_QUATS=(function(){
   const qs=[];const r=Math.PI/2;
   for(let ax=0;ax<4;ax++) for(let ay=0;ay<4;ay++) for(let az=0;az<4;az++){
     const q=new THREE.Quaternion().setFromEuler(new THREE.Euler(ax*r,ay*r,az*r));
-    // De-duplicate (quaternion q and -q represent same rotation)
     let dup=false;
     for(const existing of qs){
       if(Math.abs(q.dot(existing))>0.999){dup=true;break;}
@@ -335,67 +332,47 @@ function snapQuaternion(q){
 function getLayerCubies(axis,layer){
   return cubies.filter(c=>axis==='x'?c.ix===layer:axis==='y'?c.iy===layer:c.iz===layer);
 }
+
+// No reparenting approach: cubies always stay in cubieMeshes.
+// During animation we manually set each cubie's position/quaternion per frame.
+// At the end we snap to exact grid values.
 function animateLayerRotation(axis,layer,angleDeg,duration){
   return new Promise(resolve=>{
     if(isAnimating){resolve();return;}
     isAnimating=true;
     const affected=getLayerCubies(axis,layer);
-
-    // Save each cubie's original local position & quaternion before reparenting
-    const savedState=affected.map(c=>({
-      cubie:c,
-      pos:c.mesh.position.clone(),
-      quat:c.mesh.quaternion.clone()
-    }));
-
-    rotationGroup.rotation.set(0,0,0);rotationGroup.position.set(0,0,0);
-    rotationGroup.scale.set(1,1,1);
-    rotationGroup.updateMatrixWorld(true);
-
-    // Reparent: keep same world position by explicitly setting position
-    affected.forEach(c=>{
-      cubieMeshes.remove(c.mesh);
-      rotationGroup.add(c.mesh);
-      // position is already in world space since cubieMeshes has identity transform
-    });
-
-    const angleRad=THREE.MathUtils.degToRad(angleDeg);
     const axisVec=axis==='x'?new THREE.Vector3(1,0,0):axis==='y'?new THREE.Vector3(0,1,0):new THREE.Vector3(0,0,1);
+    const angleRad=THREE.MathUtils.degToRad(angleDeg);
+    const finalQ=new THREE.Quaternion().setFromAxisAngle(axisVec,angleRad);
+
+    // Save starting state
+    const starts=affected.map(c=>({pos:c.mesh.position.clone(),quat:c.mesh.quaternion.clone()}));
+
     const startTime=performance.now();
-
-    // Pre-compute the exact final rotation quaternion (clean 90° multiple)
-    const finalRotQ=new THREE.Quaternion().setFromAxisAngle(axisVec,angleRad);
-
     function tick(){
       const t=Math.min((performance.now()-startTime)/duration,1);
       const ease=1-Math.pow(1-t,3);
-      rotationGroup.quaternion.identity();
-      rotationGroup.quaternion.multiply(new THREE.Quaternion().setFromAxisAngle(axisVec,angleRad*ease));
+      const partialQ=new THREE.Quaternion().setFromAxisAngle(axisVec,angleRad*ease);
+
+      // Apply partial rotation to each cubie individually (no reparenting)
+      affected.forEach((c,i)=>{
+        c.mesh.position.copy(starts[i].pos).applyQuaternion(partialQ);
+        c.mesh.quaternion.copy(partialQ).multiply(starts[i].quat);
+      });
+
       if(t<1){requestAnimationFrame(tick);return;}
 
-      // Animation done — compute final positions & quaternions mathematically
+      // Animation done — snap to exact values using the clean final quaternion
       affected.forEach((c,i)=>{
-        const s=savedState[i];
-        // Apply exact rotation to position
-        const newPos=s.pos.clone().applyQuaternion(finalRotQ);
-        // Apply exact rotation to orientation
-        const newQuat=finalRotQ.clone().multiply(s.quat);
-
-        rotationGroup.remove(c.mesh);
-        cubieMeshes.add(c.mesh);
-
-        // Snap position to grid
+        const newPos=starts[i].pos.clone().applyQuaternion(finalQ);
         c.ix=Math.round(newPos.x/SPACING);
         c.iy=Math.round(newPos.y/SPACING);
         c.iz=Math.round(newPos.z/SPACING);
         c.mesh.position.set(c.ix*SPACING,c.iy*SPACING,c.iz*SPACING);
-
-        // Snap quaternion
-        c.mesh.quaternion.copy(newQuat);
+        c.mesh.quaternion.copy(finalQ).multiply(starts[i].quat);
         snapQuaternion(c.mesh.quaternion);
       });
 
-      rotationGroup.rotation.set(0,0,0);
       isAnimating=false;resolve();
     }
     requestAnimationFrame(tick);
