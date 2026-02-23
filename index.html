@@ -626,49 +626,64 @@ function setCubeZoom(ratio){
 }
 
 // Fanfare sound using Web Audio API
+// Create AudioContext early on first user interaction so it's unlocked
+let _audioCtx=null;
+function getAudioCtx(){
+  if(!_audioCtx) _audioCtx=new (window.AudioContext||window.webkitAudioContext)();
+  return _audioCtx;
+}
+// Unlock audio on any user gesture
+['click','touchstart','keydown'].forEach(evt=>{
+  document.addEventListener(evt,function unlock(){
+    const ac=getAudioCtx();
+    if(ac.state==='suspended') ac.resume();
+    document.removeEventListener(evt,unlock);
+  },{once:true});
+});
+
 function playFanfare(){
   try{
-    const ac=new (window.AudioContext||window.webkitAudioContext)();
+    const ac=getAudioCtx();
+    if(ac.state==='suspended') ac.resume();
+    const now=ac.currentTime;
     // Bright trumpet-like fanfare: C5 E5 G5 C6
     const notes=[
-      {freq:523.25,start:0,dur:0.15},
-      {freq:659.25,start:0.15,dur:0.15},
-      {freq:783.99,start:0.3,dur:0.15},
-      {freq:1046.5,start:0.45,dur:0.45},
+      {freq:523.25,start:0,dur:0.2},
+      {freq:659.25,start:0.18,dur:0.2},
+      {freq:783.99,start:0.36,dur:0.2},
+      {freq:1046.5,start:0.54,dur:0.55},
       // Harmony layer
-      {freq:392.0,start:0,dur:0.15,gain:0.3},
-      {freq:523.25,start:0.15,dur:0.15,gain:0.3},
-      {freq:659.25,start:0.3,dur:0.15,gain:0.3},
-      {freq:783.99,start:0.45,dur:0.45,gain:0.3},
+      {freq:392.0,start:0,dur:0.2,gain:0.25},
+      {freq:523.25,start:0.18,dur:0.2,gain:0.25},
+      {freq:659.25,start:0.36,dur:0.2,gain:0.25},
+      {freq:783.99,start:0.54,dur:0.55,gain:0.25},
     ];
-    const now=ac.currentTime;
     notes.forEach(n=>{
       const osc=ac.createOscillator();
-      const gain=ac.createGain();
-      const g=n.gain||0.5;
+      const gn=ac.createGain();
+      const vol=n.gain||0.4;
       osc.type='square';
       osc.frequency.value=n.freq;
-      gain.gain.setValueAtTime(0,now+n.start);
-      gain.gain.linearRampToValueAtTime(g,now+n.start+0.02);
-      gain.gain.setValueAtTime(g,now+n.start+n.dur*0.7);
-      gain.gain.linearRampToValueAtTime(0,now+n.start+n.dur);
-      osc.connect(gain);gain.connect(ac.destination);
+      gn.gain.setValueAtTime(0,now+n.start);
+      gn.gain.linearRampToValueAtTime(vol,now+n.start+0.02);
+      gn.gain.setValueAtTime(vol,now+n.start+n.dur*0.6);
+      gn.gain.linearRampToValueAtTime(0,now+n.start+n.dur);
+      osc.connect(gn);gn.connect(ac.destination);
       osc.start(now+n.start);osc.stop(now+n.start+n.dur+0.05);
     });
     // Sparkle shimmer
-    for(let i=0;i<5;i++){
+    for(let i=0;i<6;i++){
       const osc=ac.createOscillator();
-      const gain=ac.createGain();
+      const gn=ac.createGain();
       osc.type='sine';
-      osc.frequency.value=2000+Math.random()*2000;
-      const t=0.5+i*0.08;
-      gain.gain.setValueAtTime(0,now+t);
-      gain.gain.linearRampToValueAtTime(0.08,now+t+0.02);
-      gain.gain.linearRampToValueAtTime(0,now+t+0.15);
-      osc.connect(gain);gain.connect(ac.destination);
-      osc.start(now+t);osc.stop(now+t+0.2);
+      osc.frequency.value=1800+Math.random()*2500;
+      const t=0.6+i*0.09;
+      gn.gain.setValueAtTime(0,now+t);
+      gn.gain.linearRampToValueAtTime(0.1,now+t+0.02);
+      gn.gain.linearRampToValueAtTime(0,now+t+0.18);
+      osc.connect(gn);gn.connect(ac.destination);
+      osc.start(now+t);osc.stop(now+t+0.25);
     }
-    setTimeout(()=>ac.close(),2000);
   }catch(e){}
 }
 
