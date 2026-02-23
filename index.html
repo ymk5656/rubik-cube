@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="ko">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>루빅스 큐브 솔버</title>
+<title>Rubik's Cube Solver</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Sora:wght@300;400;600;800&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <style>
@@ -32,16 +32,13 @@ body::before{
   background-image:url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23000' fill-opacity='0.02'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
   pointer-events:none;z-index:0;
 }
-
-/* Full-height flex layout */
 .layout{
   display:flex;flex-direction:column;
   height:100vh;height:100dvh;
   position:relative;z-index:1;
   overflow:hidden;
 }
-
-.header{padding:0.8rem 1rem 0.3rem;text-align:center;flex-shrink:0}
+.header{padding:0.6rem 1rem 0.2rem;text-align:center;flex-shrink:0}
 .header h1{
   font-family:'DM Mono',monospace;
   font-size:clamp(1.1rem,3vw,1.8rem);
@@ -49,74 +46,63 @@ body::before{
 }
 .header h1 span{color:var(--accent)}
 .header .sub{
-  font-size:0.62rem;color:var(--text-dim);
-  letter-spacing:0.2em;text-transform:uppercase;margin-top:0.1rem;
+  font-size:0.6rem;color:var(--text-dim);
+  letter-spacing:0.2em;text-transform:uppercase;margin-top:0.05rem;
 }
-
-/* Info bar: stats + arrow inline */
 .info-bar{
   display:flex;align-items:center;justify-content:center;
-  gap:1rem;padding:0.3rem 0.5rem;flex-shrink:0;
+  gap:1rem;padding:0.2rem 0.5rem;flex-shrink:0;
   flex-wrap:wrap;
 }
 .stat{font-family:'DM Mono',monospace;font-size:0.65rem;color:var(--text-dim)}
 .stat span{color:var(--accent);font-weight:500}
-.arrow-inline{
-  display:flex;align-items:center;gap:0.3rem;
-}
-.arrow-inline .arrow-svg{width:32px;height:32px}
+.arrow-inline{display:flex;align-items:center;gap:0.3rem}
+.arrow-inline .arrow-svg{width:30px;height:30px}
 .arrow-inline .arrow-label{
   font-family:'DM Mono',monospace;font-size:0.8rem;font-weight:600;color:var(--accent);
 }
 .arrow-inline .arrow-desc{
-  font-family:'Sora',sans-serif;font-size:0.6rem;color:var(--text-dim);
+  font-family:'Sora',sans-serif;font-size:0.58rem;color:var(--text-dim);
 }
-
-/* Move display */
 .move-display{
   font-family:'DM Mono',monospace;font-size:0.7rem;
   color:var(--text-dim);text-align:center;
-  padding:0.15rem 0.5rem;flex-shrink:0;
+  padding:0.1rem 0.5rem;flex-shrink:0;
   display:flex;align-items:center;justify-content:center;gap:0.2rem;
-  flex-wrap:wrap;min-height:1.6em;
+  flex-wrap:wrap;min-height:1.5em;
 }
 .mv{
   display:inline-flex;align-items:center;justify-content:center;
-  padding:0.15rem 0.35rem;border-radius:3px;
-  font-size:0.62rem;transition:all 0.2s;
+  padding:0.12rem 0.3rem;border-radius:3px;
+  font-size:0.6rem;transition:all 0.2s;
 }
 .mv.done{background:#e8e6e0;color:var(--text-dim);opacity:0.5}
 .mv.current{
   background:var(--accent);color:#fff;
-  font-weight:600;font-size:0.72rem;
+  font-weight:600;font-size:0.7rem;
   box-shadow:0 1px 6px rgba(196,62,28,0.3);
   transform:scale(1.1);
 }
 .mv.future{background:#eae7e0;color:var(--text-dim)}
-
-/* Canvas - fills remaining space */
 #cubeCanvas{
   display:block;cursor:grab;
-  flex:1;min-height:0;
-  width:100%;
+  flex:1;min-height:0;width:100%;
 }
 #cubeCanvas:active{cursor:grabbing}
-
-/* Controls */
 .controls{
   display:flex;flex-wrap:wrap;justify-content:center;
   align-items:center;gap:0.5rem;
-  padding:0.5rem 0.5rem;flex-shrink:0;
-  padding-bottom:max(0.5rem, env(safe-area-inset-bottom));
+  padding:0.4rem 0.5rem;flex-shrink:0;
+  padding-bottom:max(0.4rem, env(safe-area-inset-bottom));
 }
-.ctrl-group{display:flex;flex-direction:column;align-items:center;gap:0.2rem}
+.ctrl-group{display:flex;flex-direction:column;align-items:center;gap:0.15rem}
 .ctrl-group label{
-  font-family:'DM Mono',monospace;font-size:0.55rem;
+  font-family:'DM Mono',monospace;font-size:0.52rem;
   color:var(--text-dim);text-transform:uppercase;letter-spacing:0.15em;
 }
 .btn{
   font-family:'DM Mono',monospace;font-size:0.68rem;letter-spacing:0.03em;
-  padding:0.5rem 0.8rem;border:1.5px solid var(--border);
+  padding:0.45rem 0.75rem;border:1.5px solid var(--border);
   background:var(--surface);color:var(--text);border-radius:6px;
   cursor:pointer;transition:all 0.2s;
   -webkit-tap-highlight-color:transparent;
@@ -132,7 +118,7 @@ body::before{
 .slider-wrap{display:flex;align-items:center;gap:0.4rem}
 .speed-slider{
   -webkit-appearance:none;appearance:none;
-  width:100px;height:3px;background:var(--border);border-radius:2px;outline:none;
+  width:90px;height:3px;background:var(--border);border-radius:2px;outline:none;
 }
 .speed-slider::-webkit-slider-thumb{
   -webkit-appearance:none;width:20px;height:20px;border-radius:50%;
@@ -140,36 +126,29 @@ body::before{
   box-shadow:0 1px 4px rgba(196,62,28,0.3);
 }
 .speed-val{
-  font-family:'DM Mono',monospace;font-size:0.65rem;color:var(--accent);
+  font-family:'DM Mono',monospace;font-size:0.62rem;color:var(--accent);
   min-width:4ch;text-align:center;
 }
+.step-row{display:flex;gap:0.3rem}
 
-/* Step buttons row */
-.step-row{
-  display:flex;gap:0.4rem;
-}
-
-/* Mobile: tighter spacing */
 @media(max-width:480px){
-  .header{padding:0.5rem 0.5rem 0.2rem}
+  .header{padding:0.4rem 0.5rem 0.15rem}
   .header .sub{display:none}
-  .controls{gap:0.35rem;padding:0.4rem 0.3rem}
-  .btn{padding:0.45rem 0.6rem;font-size:0.62rem}
-  .speed-slider{width:80px}
-  .move-display{font-size:0.6rem;padding:0.1rem 0.3rem}
-  .mv{padding:0.1rem 0.25rem;font-size:0.55rem}
-  .mv.current{font-size:0.65rem}
-  .info-bar{gap:0.5rem;padding:0.2rem}
+  .controls{gap:0.3rem;padding:0.35rem 0.3rem}
+  .btn{padding:0.4rem 0.55rem;font-size:0.6rem}
+  .speed-slider{width:70px}
+  .move-display{font-size:0.58rem;padding:0.05rem 0.3rem}
+  .mv{padding:0.08rem 0.2rem;font-size:0.52rem}
+  .mv.current{font-size:0.6rem}
+  .info-bar{gap:0.4rem;padding:0.15rem}
 }
-
-/* Landscape mobile */
 @media(max-height:500px){
   .header h1{font-size:1rem}
-  .header{padding:0.3rem 0.5rem 0.1rem}
+  .header{padding:0.2rem 0.5rem 0.05rem}
   .header .sub{display:none}
-  .info-bar{padding:0.15rem}
-  .move-display{min-height:1.2em;padding:0.05rem}
-  .controls{padding:0.3rem}
+  .info-bar{padding:0.1rem}
+  .move-display{min-height:1em;padding:0.02rem}
+  .controls{padding:0.2rem}
 }
 </style>
 </head>
@@ -179,32 +158,28 @@ body::before{
     <h1>Rubik's <span>Cube</span></h1>
     <div class="sub">3×3 Solver &amp; Visualizer</div>
   </div>
-
   <div class="info-bar">
-    <div class="stat">상태: <span id="statusText">준비</span></div>
-    <div class="stat">이동: <span id="moveIdx">0</span>/<span id="moveTotal">0</span></div>
+    <div class="stat">Status: <span id="statusText">Ready</span></div>
+    <div class="stat">Moves: <span id="moveIdx">0</span>/<span id="moveTotal">0</span></div>
     <div class="arrow-inline" id="arrowBox"></div>
   </div>
-
   <div class="move-display" id="moveDisplay"></div>
-
   <canvas id="cubeCanvas"></canvas>
-
   <div class="controls">
     <div class="ctrl-group">
-      <label>속도</label>
+      <label>Speed</label>
       <div class="slider-wrap">
         <input type="range" class="speed-slider" id="speedSlider" min="1" max="10" value="4">
-        <div class="speed-val" id="speedVal">0.8초</div>
+        <div class="speed-val" id="speedVal">0.8s</div>
       </div>
     </div>
-    <button class="btn" id="scrambleBtn">섞기</button>
-    <button class="btn btn--accent" id="solveBtn" disabled>풀기</button>
+    <button class="btn" id="scrambleBtn">Scramble</button>
+    <button class="btn btn--accent" id="solveBtn" disabled>Solve</button>
     <div class="step-row">
       <button class="btn" id="stepBackBtn" disabled>◀</button>
       <button class="btn" id="stepBtn" disabled>▶</button>
     </div>
-    <button class="btn btn--green" id="resetBtn">초기화</button>
+    <button class="btn btn--green" id="resetBtn">Reset</button>
   </div>
 </div>
 
@@ -230,7 +205,7 @@ dirLight.position.set(5,8,6);
 scene.add(dirLight);
 
 const GAP = 0.06;
-const CUBIE_SIZE = 0.92;
+const CUBIE_SIZE = 0.874; // 0.92 * 0.95 = 95% size
 const cubies = [];
 const cubieMeshes = new THREE.Group();
 scene.add(cubieMeshes);
@@ -246,6 +221,8 @@ function makeCubieMaterials(ix, iy, iz){
   ];
 }
 
+const SPACING = 0.95 + GAP; // tighter spacing to match smaller cubie
+
 function buildCube(){
   while(cubieMeshes.children.length) cubieMeshes.remove(cubieMeshes.children[0]);
   cubies.length = 0;
@@ -254,7 +231,7 @@ function buildCube(){
     for(let y=-1;y<=1;y++)
       for(let z=-1;z<=1;z++){
         const mesh = new THREE.Mesh(geo, makeCubieMaterials(x,y,z));
-        mesh.position.set(x*(1+GAP), y*(1+GAP), z*(1+GAP));
+        mesh.position.set(x*SPACING, y*SPACING, z*SPACING);
         cubieMeshes.add(mesh);
         cubies.push({mesh, ix:x, iy:y, iz:z});
       }
@@ -297,7 +274,7 @@ function animateLayerRotation(axis, layer, angleDeg, duration){
         const wq=new THREE.Quaternion(); c.mesh.getWorldQuaternion(wq);
         rotationGroup.remove(c.mesh); cubieMeshes.add(c.mesh);
         c.mesh.position.copy(wp); c.mesh.quaternion.copy(wq);
-        c.ix=Math.round(wp.x/(1+GAP)); c.iy=Math.round(wp.y/(1+GAP)); c.iz=Math.round(wp.z/(1+GAP));
+        c.ix=Math.round(wp.x/SPACING); c.iy=Math.round(wp.y/SPACING); c.iz=Math.round(wp.z/SPACING);
       });
       rotationGroup.rotation.set(0,0,0);
       isAnimating=false; resolve();
@@ -320,7 +297,6 @@ async function executeMove(notation, duration){
   await animateLayerRotation(m.axis, m.layer, m.angle, duration);
 }
 
-// Camera orbit
 let orbiting=false, orbX, orbY;
 let cameraTheta=Math.PI/4, cameraPhi=Math.PI/6;
 const cameraRadius=8.5;
@@ -354,8 +330,7 @@ window.addEventListener('touchend',()=>{orbiting=false});
 
 function resize(){
   const rect = canvas.getBoundingClientRect();
-  const w = rect.width;
-  const h = rect.height;
+  const w = rect.width, h = rect.height;
   if(w===0||h===0) return;
   const dpr = Math.min(window.devicePixelRatio, 2);
   canvas.width = w * dpr;
@@ -368,15 +343,14 @@ window.addEventListener('resize', resize);
 
 function renderLoop(){ requestAnimationFrame(renderLoop); renderer.render(scene, camera); }
 
-// Arrow display (inline, compact)
 const arrowBox = document.getElementById('arrowBox');
 const MOVE_DESC = {
-  'U':'윗면 ↻',"U'":'윗면 ↺','U2':'윗면 180°',
-  'D':'아랫면 ↻',"D'":'아랫면 ↺','D2':'아랫면 180°',
-  'F':'앞면 ↻',"F'":'앞면 ↺','F2':'앞면 180°',
-  'B':'뒷면 ↻',"B'":'뒷면 ↺','B2':'뒷면 180°',
-  'R':'오른면 ↻',"R'":'오른면 ↺','R2':'오른면 180°',
-  'L':'왼면 ↻',"L'":'왼면 ↺','L2':'왼면 180°',
+  'U':'Top CW',"U'":'Top CCW','U2':'Top 180°',
+  'D':'Bottom CW',"D'":'Bottom CCW','D2':'Bottom 180°',
+  'F':'Front CW',"F'":'Front CCW','F2':'Front 180°',
+  'B':'Back CW',"B'":'Back CCW','B2':'Back 180°',
+  'R':'Right CW',"R'":'Right CCW','R2':'Right 180°',
+  'L':'Left CW',"L'":'Left CCW','L2':'Left 180°',
 };
 
 function getArrowSVG(notation){
@@ -394,7 +368,6 @@ function showArrow(notation){
 }
 function clearArrow(){ arrowBox.innerHTML=''; }
 
-// Move display
 const moveDisplay = document.getElementById('moveDisplay');
 function updateMoveDisplay(moves, idx){
   if(!moves.length){moveDisplay.innerHTML='';return;}
@@ -410,7 +383,6 @@ function updateMoveDisplay(moves, idx){
   moveDisplay.innerHTML=html;
 }
 
-// Scramble & Solve
 let scrambleMoves=[], solveMoves=[], currentSolveIdx=0, solving=false;
 
 function invertMove(m){
@@ -424,7 +396,7 @@ async function doScramble(){
   buildCube(); scrambleMoves=[]; solveMoves=[]; currentSolveIdx=0;
   const faces=['U','D','F','B','L','R'], mods=['', "'", '2'];
   let last=''; const numMoves=18+Math.floor(Math.random()*8);
-  statusText.textContent='섞는중...'; scrambleBtn.disabled=true;
+  statusText.textContent='Scrambling...'; scrambleBtn.disabled=true;
   for(let i=0;i<numMoves;i++){
     let f; do{f=faces[Math.floor(Math.random()*6)]}while(f===last); last=f;
     const mv=f+mods[Math.floor(Math.random()*3)];
@@ -433,14 +405,14 @@ async function doScramble(){
   }
   solveMoves=scrambleMoves.map(invertMove).reverse();
   moveTotalEl.textContent=solveMoves.length; moveIdxEl.textContent='0';
-  statusText.textContent='섞기 완료'; clearArrow();
+  statusText.textContent='Scrambled'; clearArrow();
   updateMoveDisplay(solveMoves,-1); scrambleBtn.disabled=false; updateBtnState();
 }
 
 async function animateSolve(){
   if(solving||isAnimating)return;
   solving=true; scrambleBtn.disabled=true; solveBtn.disabled=true; stepBtn.disabled=true;
-  statusText.textContent='풀이중...';
+  statusText.textContent='Solving...';
   while(currentSolveIdx<solveMoves.length && solving){
     const mv=solveMoves[currentSolveIdx];
     updateMoveDisplay(solveMoves,currentSolveIdx); showArrow(mv);
@@ -449,8 +421,8 @@ async function animateSolve(){
     await new Promise(r=>setTimeout(r,speedMs*0.15));
   }
   if(currentSolveIdx>=solveMoves.length){
-    statusText.textContent='완료!'; clearArrow();
-    moveDisplay.innerHTML='<span class="mv current">✓ 완료</span>';
+    statusText.textContent='Solved!'; clearArrow();
+    moveDisplay.innerHTML='<span class="mv current">✓ Done</span>';
   }
   solving=false; scrambleBtn.disabled=false; updateBtnState();
 }
@@ -462,10 +434,10 @@ async function stepOnce(){
   stepBtn.disabled=true; stepBackBtn.disabled=true;
   await executeMove(mv,speedMs); currentSolveIdx++;
   moveIdxEl.textContent=currentSolveIdx;
-  statusText.textContent=`풀이중 (${currentSolveIdx}/${solveMoves.length})`;
+  statusText.textContent=`Solving (${currentSolveIdx}/${solveMoves.length})`;
   if(currentSolveIdx>=solveMoves.length){
-    statusText.textContent='완료!'; setTimeout(clearArrow,speedMs);
-    moveDisplay.innerHTML='<span class="mv current">✓ 완료</span>';
+    statusText.textContent='Solved!'; setTimeout(clearArrow,speedMs);
+    moveDisplay.innerHTML='<span class="mv current">✓ Done</span>';
   }
   updateBtnState();
 }
@@ -478,14 +450,14 @@ async function stepBack(){
   stepBtn.disabled=true; stepBackBtn.disabled=true;
   await executeMove(undoMv,speedMs);
   moveIdxEl.textContent=currentSolveIdx;
-  statusText.textContent=`풀이중 (${currentSolveIdx}/${solveMoves.length})`;
+  statusText.textContent=`Solving (${currentSolveIdx}/${solveMoves.length})`;
   updateBtnState();
 }
 
 function doReset(){
   solving=false; isAnimating=false;
   scrambleMoves=[]; solveMoves=[]; currentSolveIdx=0;
-  buildCube(); statusText.textContent='준비';
+  buildCube(); statusText.textContent='Ready';
   moveIdxEl.textContent='0'; moveTotalEl.textContent='0';
   moveDisplay.innerHTML=''; clearArrow(); updateBtnState();
 }
@@ -510,7 +482,7 @@ const scrambleBtn=document.getElementById('scrambleBtn');
 function updateSpeed(){
   const v=parseInt(speedSlider.value);
   speedMs=Math.round(1500-(v-1)*150);
-  speedValEl.textContent=(speedMs/1000).toFixed(1)+'초';
+  speedValEl.textContent=(speedMs/1000).toFixed(1)+'s';
 }
 speedSlider.addEventListener('input',updateSpeed);
 
@@ -521,7 +493,6 @@ stepBackBtn.addEventListener('click',stepBack);
 document.getElementById('resetBtn').addEventListener('click',doReset);
 
 buildCube(); updateCamera(); updateSpeed(); renderLoop();
-// Delay resize to ensure layout is settled
 requestAnimationFrame(()=>{ resize(); requestAnimationFrame(resize); });
 </script>
 </body>
